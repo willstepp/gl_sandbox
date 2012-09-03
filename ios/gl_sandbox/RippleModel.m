@@ -63,15 +63,20 @@
 
 - (void)initMesh
 {
+    unsigned int index1 = 0;
+    unsigned int index2 = 0;
     for (int i=0; i<poolHeight; i++)
     {
         for (int j=0; j<poolWidth; j++)
         {
-            rippleVertices[(i*poolWidth+j)*2+0] = -1.f + j*(2.f/(poolWidth-1));
-            rippleVertices[(i*poolWidth+j)*2+1] = 1.f - i*(2.f/(poolHeight-1));
+            index1 = (i*poolWidth+j)*2+0;
+            index2 = (i*poolWidth+j)*2+1;
+            
+            rippleVertices[index1] = -1.f + j*(2.f/(poolWidth-1));
+            rippleVertices[index2] = 1.f - i*(2.f/(poolHeight-1));
 
-            rippleTexCoords[(i*poolWidth+j)*2+0] = (float)i/(poolHeight-1) * texCoordFactorS + texCoordOffsetS;
-            rippleTexCoords[(i*poolWidth+j)*2+1] = (1.f - (float)j/(poolWidth-1)) * texCoordFactorT + texCoordFactorT;
+            rippleTexCoords[index1] = (float)i/(poolHeight-1) * texCoordFactorS + texCoordOffsetS;
+            rippleTexCoords[index2] = (1.f - (float)j/(poolWidth-1)) * texCoordFactorT + texCoordFactorT;
         }            
     }
     

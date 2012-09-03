@@ -52,7 +52,7 @@ enum
     RippleModel *_ripple;
 }
 @property (strong, nonatomic) EAGLContext *context;
-
+- (CGImageRef)CGImageRotatedByAngle:(CGImageRef)imgRef angle:(CGFloat)angle;
 @end
 
 @implementation RESOViewController
@@ -65,6 +65,40 @@ enum
         // Custom initialization
     }
     return self;
+}
+
+- (CGImageRef)CGImageRotatedByAngle:(CGImageRef)imgRef angle:(CGFloat)angle
+{
+	CGFloat angleInRadians = angle * (M_PI / 180);
+	CGFloat width = CGImageGetWidth(imgRef);
+	CGFloat height = CGImageGetHeight(imgRef);
+	
+	CGRect imgRect = CGRectMake(0, 0, width, height);
+	CGAffineTransform transform = CGAffineTransformMakeRotation(angleInRadians);
+	CGRect rotatedRect = CGRectApplyAffineTransform(imgRect, transform);
+	
+	CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+	CGContextRef bmContext = CGBitmapContextCreate(NULL,
+												   rotatedRect.size.width,
+												   rotatedRect.size.height,
+												   8,
+												   0,
+												   colorSpace,
+												   kCGImageAlphaPremultipliedFirst);
+	CGContextSetAllowsAntialiasing(bmContext, YES);
+	CGContextSetInterpolationQuality(bmContext, kCGInterpolationHigh);
+	CGColorSpaceRelease(colorSpace);
+	CGContextTranslateCTM(bmContext,
+						  +(rotatedRect.size.width/2),
+						  +(rotatedRect.size.height/2));
+	CGContextRotateCTM(bmContext, angleInRadians);
+	CGContextDrawImage(bmContext, CGRectMake(-width/2, -height/2, width, height),
+					   imgRef);
+	
+	CGImageRef rotatedImage = CGBitmapContextCreateImage(bmContext);
+	CFRelease(bmContext);
+	
+	return rotatedImage;
 }
 
 - (void)viewDidLoad
@@ -101,6 +135,7 @@ enum
     
     UIImage * myImage = [UIImage imageNamed:@"space.png"];
     CGImageRef imageRef = [myImage CGImage];
+    imageRef = [self CGImageRotatedByAngle:imageRef angle:90.0f];
     _pixelBuffer = [self pixelBufferFromCGImage:imageRef];
     _width = CVPixelBufferGetWidth(_pixelBuffer);
     _height = CVPixelBufferGetHeight(_pixelBuffer);
@@ -255,7 +290,9 @@ enum
         glActiveTexture(GL_TEXTURE0);
         
         // 1
-        CGImageRef spriteImage = [UIImage imageNamed:@"space.png"].CGImage;
+        UIImage * image = [UIImage imageNamed:@"space.png"];
+        CGImageRef spriteImage = image.CGImage;
+        spriteImage = [self CGImageRotatedByAngle:spriteImage angle:90.0f];
         if (!spriteImage) {
             NSLog(@"Failed to load image %@", @"space.png");
             exit(1);
