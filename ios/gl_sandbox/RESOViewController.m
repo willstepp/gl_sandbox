@@ -99,7 +99,7 @@ enum
     
     [self setupGL];
     
-    UIImage * myImage = [UIImage imageNamed:@"waterfall.png"];
+    UIImage * myImage = [UIImage imageNamed:@"space.png"];
     CGImageRef imageRef = [myImage CGImage];
     _pixelBuffer = [self pixelBufferFromCGImage:imageRef];
     _width = CVPixelBufferGetWidth(_pixelBuffer);
@@ -226,15 +226,15 @@ enum
     
     if (_ripple)
     {
-        glDrawElements(GL_TRIANGLE_STRIP, [_ripple getIndexCount], GL_UNSIGNED_SHORT, 0);
+        unsigned int indexCount = [_ripple getIndexCount];
+        glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_SHORT, 0);
     }
 }
 
 #pragma mark - GLKViewControllerDelegate
 
-- (void)update {
-    CVReturn err;
-
+- (void)update
+{
     if (!_textureCache)
     {
         NSLog(@"No video texture cache");
@@ -253,25 +253,38 @@ enum
         [self setupBuffers];
         
         glActiveTexture(GL_TEXTURE0);
-        err = CVOpenGLESTextureCacheCreateTextureFromImage(kCFAllocatorDefault,
-                                                           _textureCache,
-                                                           _pixelBuffer,
-                                                           NULL,
-                                                           GL_TEXTURE_2D,
-                                                           GL_RGBA,
-                                                           _width,
-                                                           _height,
-                                                           GL_BGRA,
-                                                           GL_UNSIGNED_BYTE,
-                                                           0,
-                                                           &_texture);
         
-        if (err)
-        {
-            NSLog(@"Error at CVOpenGLESTextureCacheCreateTextureFromImage %d", err);
+        // 1
+        CGImageRef spriteImage = [UIImage imageNamed:@"space.png"].CGImage;
+        if (!spriteImage) {
+            NSLog(@"Failed to load image %@", @"space.png");
+            exit(1);
         }
         
-        glBindTexture(CVOpenGLESTextureGetTarget(_texture), CVOpenGLESTextureGetName(_texture));
+        // 2
+        _width = CGImageGetWidth(spriteImage);
+        _height = CGImageGetHeight(spriteImage);
+        
+        GLubyte * spriteData = (GLubyte *) calloc(_width*_height*4, sizeof(GLubyte));
+        
+        CGContextRef spriteContext = CGBitmapContextCreate(spriteData, _width, _height, 8, _width*4,
+                                                           CGImageGetColorSpace(spriteImage), kCGImageAlphaPremultipliedLast);
+        
+        // 3
+        CGContextDrawImage(spriteContext, CGRectMake(0, 0, _width, _height), spriteImage);
+        CGContextRelease(spriteContext);
+        
+        // 4
+        GLuint texName;
+        glGenTextures(1, &texName);
+        glBindTexture(GL_TEXTURE_2D, texName);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _width, _height, 0, GL_RGBA, GL_UNSIGNED_BYTE, spriteData);
+        
+        free(spriteData);
+        
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }
@@ -281,7 +294,9 @@ enum
         [_ripple runSimulation];
         
         // no need to rebind GL_ARRAY_BUFFER to _texcoordVBO since it should be still be bound from setupBuffers
-        glBufferData(GL_ARRAY_BUFFER, [_ripple getVertexSize], [_ripple getTexCoords], GL_DYNAMIC_DRAW);
+        unsigned int vertexSize = [_ripple getVertexSize];
+        GLfloat * texCoords = [_ripple getTexCoords];
+        glBufferData(GL_ARRAY_BUFFER, vertexSize, texCoords, GL_DYNAMIC_DRAW);
     }
 }
 
